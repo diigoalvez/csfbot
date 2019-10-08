@@ -3,10 +3,9 @@ using Newtonsoft.Json;
 using RestSharp;
 using System;
 using System.Collections.Generic;
-using System.Data.SqlClient;
-using System.Linq;
-using System.Xml;
 using System.Configuration;
+using System.Data.SqlClient;
+using System.Xml;
 
 namespace ConsoleCSF.Services
 {
@@ -63,9 +62,9 @@ namespace ConsoleCSF.Services
         Inner Join credito.dbo.TB_TITULAR_DETALHE T on  p.ID_TITDET = T.ID_TITDET
         Inner Join corporativo.dbo.TB_VALOR_DOMINIO D on CONVERT(varchar,p.CD_STATUSPROP) = d.CD_VLDOMIN
         Left Join pr..TB_PROCESD_CONTROLE pd on pd.NU_PROPTIT = p.NU_PROP
-        where (p.CD_STATUSPROP in (16, 9, 11, 18, 33, 28, 30)
-        and p.DH_ALT <= DATEADD(SECOND,-180,GETDATE()) and d.CD_TPDOMIN = 4)
-        and p.DH_Criac >= '" + ConfigurationManager.AppSettings["dataInicioConsulta"] + "' order by p.DH_CRIAC ";
+        where (p.CD_STATUSPROP in (" + ConfigurationManager.AppSettings["filtroStatus"] + ") " +
+        "and p.DH_ALT <= DATEADD(SECOND,-180,GETDATE()) and d.CD_TPDOMIN = 4) and p.DH_Criac >= '" + ConfigurationManager.AppSettings["dataInicioConsulta"] + "' " +
+        "order by p.DH_CRIAC ";
 
                     Console.WriteLine("Consultando propostas...");
                     Console.WriteLine("=======================");
@@ -103,14 +102,14 @@ namespace ConsoleCSF.Services
         {
             Console.WriteLine("Autenticando.");
             Console.WriteLine("=======================");
-            var cliente = new RestClient(ConfigurationManager.AppSettings["urlPostAutenticacao"]);
-            var request = new RestRequest(Method.POST);
+            RestClient cliente = new RestClient(ConfigurationManager.AppSettings["urlPostAutenticacao"]);
+            RestRequest request = new RestRequest(Method.POST);
             request.AddHeader("Accept", "*/*");
             request.AddHeader("Connection", "Keep-Alive");
             request.AddHeader("Host", ConfigurationManager.AppSettings["ipHostAutenticacaoSoap"]);
             request.AddHeader("SOAPAction", ConfigurationManager.AppSettings["soapActionAutenticacao"]);
             request.AddHeader("Content-Type", "text/xml;charset=UTF-8");
-            request.AddParameter("undefined", "<soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\" xmlns:tem=\"http://tempuri.org/\" xmlns:car=\"http://schemas.datacontract.org/2004/07/Carrefour.Core.Servico.ComunicacaoBase\" xmlns:car1=\"http://schemas.datacontract.org/2004/07/Carrefour.Core.Servico.Validacao\" xmlns:car2=\"http://schemas.datacontract.org/2004/07/Carrefour.Servico.Autenticacao.Entidade\">\r\n\r\n   <soapenv:Header/>\r\n\r\n   <soapenv:Body>\r\n\r\n      <tem:AutenticarConsumidor>\r\n\r\n         <tem:solicitacao>\r\n\r\n            <car:CanalSolicitacao>PORTAL</car:CanalSolicitacao>\r\n\r\n            <car:ChaveSolicitacao>" + ConfigurationManager.AppSettings["chaveSolicitacao"] + "</car:ChaveSolicitacao>\r\n\r\n            <car2:CodigoHierarquia>" + ConfigurationManager.AppSettings["codigoHierarquia"] + "</car2:CodigoHierarquia>\r\n\r\n            <car2:Senha>53rvC@r3#2013</car2:Senha>\r\n\r\n            <car2:Usuario>SERVCORE</car2:Usuario>\r\n\r\n         </tem:solicitacao>\r\n\r\n      </tem:AutenticarConsumidor>\r\n\r\n   </soapenv:Body>\r\n\r\n</soapenv:Envelope>", ParameterType.RequestBody);
+            request.AddParameter("undefined", "<soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\" xmlns:tem=\"http://tempuri.org/\" xmlns:car=\"http://schemas.datacontract.org/2004/07/Carrefour.Core.Servico.ComunicacaoBase\" xmlns:car1=\"http://schemas.datacontract.org/2004/07/Carrefour.Core.Servico.Validacao\" xmlns:car2=\"http://schemas.datacontract.org/2004/07/Carrefour.Servico.Autenticacao.Entidade\">\r\n\r\n   <soapenv:Header/>\r\n\r\n   <soapenv:Body>\r\n\r\n      <tem:AutenticarConsumidor>\r\n\r\n         <tem:solicitacao>\r\n\r\n            <car:CanalSolicitacao>" + ConfigurationManager.AppSettings["canalSolicitacao"] + "</car:CanalSolicitacao>\r\n\r\n            <car:ChaveSolicitacao>" + ConfigurationManager.AppSettings["chaveSolicitacaoLogin"] + "</car:ChaveSolicitacao>\r\n\r\n            <car2:CodigoHierarquia>" + ConfigurationManager.AppSettings["codigoHierarquia"] + "</car2:CodigoHierarquia>\r\n\r\n            <car2:Senha>53rvC@r3#2013</car2:Senha>\r\n\r\n            <car2:Usuario>SERVCORE</car2:Usuario>\r\n\r\n         </tem:solicitacao>\r\n\r\n      </tem:AutenticarConsumidor>\r\n\r\n   </soapenv:Body>\r\n\r\n</soapenv:Envelope>", ParameterType.RequestBody);
             IRestResponse resposta = cliente.Execute(request);
 
             if (resposta.StatusCode == System.Net.HttpStatusCode.OK)
@@ -142,7 +141,7 @@ namespace ConsoleCSF.Services
             request.AddHeader("Host", ConfigurationManager.AppSettings["ipHostEmviarPropostaSoap"]);
             request.AddHeader("SOAPAction", ConfigurationManager.AppSettings["soapActionEnviarProposta"]);
             request.AddHeader("Content-Type", "text/xml;charset=UTF-8");
-            request.AddParameter("undefined", "<soapenv:Envelope xmlns:soapenv='http://schemas.xmlsoap.org/soap/envelope/' xmlns:tem='http://tempuri.org/' xmlns:csf='http://schemas.datacontract.org/2004/07/Csf.Core.Base.Service.Communication' xmlns:csf1='http://schemas.datacontract.org/2004/07/Csf.Core.Base.Service.Validation' xmlns:csf2='http://schemas.datacontract.org/2004/07/Csf.PR.Svc.PropostaCartao.Contrato.Pacote.GerenciadorProposta'><soapenv:Header>    <TokenPlataformaRelacionamento>" + token + "</TokenPlataformaRelacionamento></soapenv:Header><soapenv:Body><tem:SolucionarProblemasProposta><tem:solicitacao><csf:CanalSolicitacao>PORTAL</csf:CanalSolicitacao><csf:ChaveSolicitacao>" + ConfigurationManager.AppSettings["chaveSolicitacao"] + "</csf:ChaveSolicitacao><csf2:NumeroProposta>" + proposta.NumeroProposta + "</csf2:NumeroProposta></tem:solicitacao></tem:SolucionarProblemasProposta></soapenv:Body></soapenv:Envelope>", ParameterType.RequestBody);
+            request.AddParameter("undefined", "<soapenv:Envelope xmlns:soapenv='http://schemas.xmlsoap.org/soap/envelope/' xmlns:tem='http://tempuri.org/' xmlns:csf='http://schemas.datacontract.org/2004/07/Csf.Core.Base.Service.Communication' xmlns:csf1='http://schemas.datacontract.org/2004/07/Csf.Core.Base.Service.Validation' xmlns:csf2='http://schemas.datacontract.org/2004/07/Csf.PR.Svc.PropostaCartao.Contrato.Pacote.GerenciadorProposta'><soapenv:Header>    <TokenPlataformaRelacionamento>" + token + "</TokenPlataformaRelacionamento></soapenv:Header><soapenv:Body><tem:SolucionarProblemasProposta><tem:solicitacao><csf:CanalSolicitacao>" + ConfigurationManager.AppSettings["canalSolicitacao"] + "</csf:CanalSolicitacao><csf:ChaveSolicitacao>" + ConfigurationManager.AppSettings["chaveSolicitacaoRequisicao"] + "</csf:ChaveSolicitacao><csf2:NumeroProposta>" + proposta.NumeroProposta + "</csf2:NumeroProposta></tem:solicitacao></tem:SolucionarProblemasProposta></soapenv:Body></soapenv:Envelope>", ParameterType.RequestBody);
             IRestResponse resposta = cliente.Execute(request);
             XmlDocument doc = new XmlDocument();
             doc.LoadXml(resposta.Content);
