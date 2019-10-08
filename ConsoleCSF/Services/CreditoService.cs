@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Configuration;
 using System.Data.SqlClient;
+using System.Threading;
 using System.Xml;
 
 namespace ConsoleCSF.Services
@@ -31,6 +32,7 @@ namespace ConsoleCSF.Services
                     foreach (var item in propostas)
                     {
                         EnviarProposta(item, token);
+                        Thread.Sleep(2500);
                     }
                 }
             }
@@ -144,21 +146,31 @@ namespace ConsoleCSF.Services
             request.AddParameter("undefined", "<soapenv:Envelope xmlns:soapenv='http://schemas.xmlsoap.org/soap/envelope/' xmlns:tem='http://tempuri.org/' xmlns:csf='http://schemas.datacontract.org/2004/07/Csf.Core.Base.Service.Communication' xmlns:csf1='http://schemas.datacontract.org/2004/07/Csf.Core.Base.Service.Validation' xmlns:csf2='http://schemas.datacontract.org/2004/07/Csf.PR.Svc.PropostaCartao.Contrato.Pacote.GerenciadorProposta'><soapenv:Header>    <TokenPlataformaRelacionamento>" + token + "</TokenPlataformaRelacionamento></soapenv:Header><soapenv:Body><tem:SolucionarProblemasProposta><tem:solicitacao><csf:CanalSolicitacao>" + ConfigurationManager.AppSettings["canalSolicitacao"] + "</csf:CanalSolicitacao><csf:ChaveSolicitacao>" + ConfigurationManager.AppSettings["chaveSolicitacaoRequisicao"] + "</csf:ChaveSolicitacao><csf2:NumeroProposta>" + proposta.NumeroProposta + "</csf2:NumeroProposta></tem:solicitacao></tem:SolucionarProblemasProposta></soapenv:Body></soapenv:Envelope>", ParameterType.RequestBody);
             IRestResponse resposta = cliente.Execute(request);
             XmlDocument doc = new XmlDocument();
-            doc.LoadXml(resposta.Content);
-            dynamic objeto = JsonConvert.DeserializeObject<dynamic>(JsonConvert.SerializeXmlNode(doc));
-            bool sucesso = (bool)objeto["s:Envelope"]["s:Body"]["SolucionarProblemasPropostaResponse"]["SolucionarProblemasPropostaResult"]["Resultado"]["b:Sucesso"];
-            string erro = objeto["s:Envelope"]["s:Body"]["SolucionarProblemasPropostaResponse"]["SolucionarProblemasPropostaResult"]["Resultado"]["b:Descricao"].ToString();
-
-            if (sucesso)
+            if (resposta.StatusCode == 0)
             {
-                Console.WriteLine($"Proposta {proposta.NumeroProposta} enviada com sucesso.");
+                Thread.Sleep(2500);
+                Console.WriteLine($"Tentando enviar novamente a proposta {proposta.NumeroProposta}.");
                 Console.WriteLine("=======================");
+                EnviarProposta(proposta, token);
             }
             else
             {
-                Console.WriteLine($"Proposta {proposta.NumeroProposta} enviada com erro.");
-                Console.WriteLine($"Mensagem: {erro}");
-                Console.WriteLine("=======================");
+                doc.LoadXml(resposta.Content);
+                dynamic objeto = JsonConvert.DeserializeObject<dynamic>(JsonConvert.SerializeXmlNode(doc));
+                bool sucesso = (bool)objeto["s:Envelope"]["s:Body"]["SolucionarProblemasPropostaResponse"]["SolucionarProblemasPropostaResult"]["Resultado"]["b:Sucesso"];
+                string erro = objeto["s:Envelope"]["s:Body"]["SolucionarProblemasPropostaResponse"]["SolucionarProblemasPropostaResult"]["Resultado"]["b:Descricao"].ToString();
+
+                if (sucesso)
+                {
+                    Console.WriteLine($"Proposta {proposta.NumeroProposta} enviada com sucesso.");
+                    Console.WriteLine("=======================");
+                }
+                else
+                {
+                    Console.WriteLine($"Proposta {proposta.NumeroProposta} enviada com erro.");
+                    Console.WriteLine($"Mensagem: {erro}");
+                    Console.WriteLine("=======================");
+                }
             }
         }
     }
